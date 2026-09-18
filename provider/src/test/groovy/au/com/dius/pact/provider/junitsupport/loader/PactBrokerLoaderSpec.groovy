@@ -1004,6 +1004,62 @@ class PactBrokerLoaderSpec extends Specification {
     System.clearProperty('my.token')
   }
 
+  @Issue('#1935')
+  def 'Custom Headers: Passes every configured custom header in the options, so they reach the fetch of the pact contents'() {
+    given:
+    pactBrokerLoader = {
+      new PactBrokerLoader(PactBrokerAnnotationWithMultipleCustomHeaders.getAnnotation(PactBroker))
+    }
+
+    when:
+    def pactBrokerClient = pactBrokerLoader()
+            .newPactBrokerClient(new URI('http://localhost'), new SystemPropertyResolver())
+
+    then:
+    pactBrokerClient.options['customHeaders'] == [
+      'X-Pact-Broker-Client-Id': 'expected-id',
+      'X-Pact-Broker-Client-Secret': 'expected-secret'
+    ]
+    pactBrokerClient.config.customHeaders == [
+      'X-Pact-Broker-Client-Id': 'expected-id',
+      'X-Pact-Broker-Client-Secret': 'expected-secret'
+    ]
+  }
+
+  @Issue('#1935')
+  def 'Custom Headers: Resolves expressions in the custom headers passed in the options'() {
+    given:
+    System.setProperty('my.token', 'resolved-token')
+    pactBrokerLoader = {
+      new PactBrokerLoader(PactBrokerAnnotationWithCustomHeaderExpression.getAnnotation(PactBroker))
+    }
+
+    when:
+    def pactBrokerClient = pactBrokerLoader()
+            .newPactBrokerClient(new URI('http://localhost'), new SystemPropertyResolver())
+
+    then:
+    pactBrokerClient.options['customHeaders'] == ['X-Token-Header': 'resolved-token']
+
+    cleanup:
+    System.clearProperty('my.token')
+  }
+
+  @Issue('#1935')
+  def 'Custom Headers: No custom headers entry in the options if none are configured'() {
+    given:
+    pactBrokerLoader = {
+      new PactBrokerLoader(FullPactBrokerAnnotation.getAnnotation(PactBroker))
+    }
+
+    when:
+    def pactBrokerClient = pactBrokerLoader()
+            .newPactBrokerClient(new URI('http://localhost'), new SystemPropertyResolver())
+
+    then:
+    !pactBrokerClient.options.containsKey('customHeaders')
+  }
+
   def 'Custom Headers: No custom headers if none are configured'() {
     given:
     pactBrokerLoader = {
@@ -1654,6 +1710,15 @@ class PactBrokerLoaderSpec extends Specification {
   @PactBroker(host = 'pactbroker.host',
       customHeaders = [@PactBrokerHttpHeader(name = 'X-Custom-Header', value = 'custom-value')])
   static class PactBrokerAnnotationWithCustomHeaders {
+
+  }
+
+  @PactBroker(host = 'pactbroker.host',
+      customHeaders = [
+          @PactBrokerHttpHeader(name = 'X-Pact-Broker-Client-Id', value = 'expected-id'),
+          @PactBrokerHttpHeader(name = 'X-Pact-Broker-Client-Secret', value = 'expected-secret')
+      ])
+  static class PactBrokerAnnotationWithMultipleCustomHeaders {
 
   }
 

@@ -54,6 +54,20 @@ object Utils {
   }
 
   /**
+   * Looks up a key in a map, expecting a map of strings to strings as the value. If the key does not exist, or the
+   * value is not a map with only string keys and values, returns an empty map.
+   */
+  @Suppress("UNCHECKED_CAST")
+  fun lookupStringMapInMap(map: Map<String, Any?>, key: String): Map<String, String> {
+    val value = map[key]
+    return if (value is Map<*, *> && value.all { it.key is String && it.value is String }) {
+      value as Map<String, String>
+    } else {
+      emptyMap()
+    }
+  }
+
+  /**
    * Finds a random open port between the min and max port values
    */
   fun randomPort(lower: Int = 10000, upper: Int = 60000): Int {

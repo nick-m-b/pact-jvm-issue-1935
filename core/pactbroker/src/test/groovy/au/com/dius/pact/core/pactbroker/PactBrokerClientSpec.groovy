@@ -921,4 +921,32 @@ class PactBrokerClientSpec extends Specification {
     result.ok
     !result.verificationResultUrl
   }
+
+  @Issue('#1935')
+  def 'fromOptions - carries the transport settings from the options map into the config'() {
+    given:
+    def options = [
+      authentication: new Auth.BasicAuthentication('user', 'pw'),
+      insecureTLS: true,
+      customHeaders: ['X-Custom-Header': 'custom-value']
+    ]
+
+    when:
+    def client = PactBrokerClient.fromOptions('http://localhost:8080', options)
+
+    then:
+    client.config.insecureTLS
+    client.config.customHeaders == ['X-Custom-Header': 'custom-value']
+    client.options == options
+  }
+
+  @Issue('#1935')
+  def 'fromOptions - defaults the transport settings when the options do not have them'() {
+    when:
+    def client = PactBrokerClient.fromOptions('http://localhost:8080', [:])
+
+    then:
+    !client.config.insecureTLS
+    client.config.customHeaders == [:]
+  }
 }

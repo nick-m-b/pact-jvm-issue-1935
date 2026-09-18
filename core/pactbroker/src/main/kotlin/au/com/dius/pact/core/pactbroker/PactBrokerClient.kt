@@ -2,6 +2,7 @@ package au.com.dius.pact.core.pactbroker
 
 import au.com.dius.pact.core.support.Auth
 import au.com.dius.pact.core.support.Json
+import au.com.dius.pact.core.support.PactReaderOptionKeys
 import au.com.dius.pact.core.support.Result
 import au.com.dius.pact.core.support.Utils
 import au.com.dius.pact.core.support.Utils.lookupEnvironmentValue
@@ -1089,6 +1090,23 @@ open class PactBrokerClient(
       )
 
   companion object {
+    /**
+     * Creates a client from the untyped options map carried on a [au.com.dius.pact.core.model.BrokerUrlSource].
+     *
+     * The options and the config have to agree, so recreating a client from those options needs to go through here.
+     * Deriving the config separately is what dropped the custom headers from the pact fetch and from the publishing
+     * of verification results (see issue #1935).
+     */
+    @JvmStatic
+    fun fromOptions(pactBrokerUrl: String, options: Map<String, Any>) = PactBrokerClient(
+      pactBrokerUrl,
+      options.toMutableMap(),
+      PactBrokerClientConfig(
+        insecureTLS = Utils.lookupInMap(options, PactReaderOptionKeys.INSECURE_TLS, Boolean::class.java, false),
+        customHeaders = Utils.lookupStringMapInMap(options, PactReaderOptionKeys.CUSTOM_HEADERS)
+      )
+    )
+
     const val LATEST_PROVIDER_PACTS_WITH_NO_TAG = "pb:latest-untagged-pact-version"
     const val LATEST_PROVIDER_PACTS = "pb:latest-provider-pacts"
     const val LATEST_PROVIDER_PACTS_WITH_TAG = "pb:latest-provider-pacts-with-tag"

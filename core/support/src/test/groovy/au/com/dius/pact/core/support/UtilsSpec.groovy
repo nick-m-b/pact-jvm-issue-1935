@@ -21,6 +21,23 @@ class UtilsSpec extends Specification {
     [key: null]  | Boolean | true       || true
   }
 
+  @Unroll
+  def 'lookupStringMapInMap - #description'() {
+    expect:
+    Utils.INSTANCE.lookupStringMapInMap(map, 'key') == value
+
+    where:
+
+    description                        | map                              || value
+    'missing key'                      | [:]                              || [:]
+    'null value'                       | [key: null]                      || [:]
+    'value is not a map'               | [key: 'not a map']               || [:]
+    'empty map'                        | [key: [:]]                       || [:]
+    'string keys and values'           | [key: [a: '1', b: '2']]          || [a: '1', b: '2']
+    'a value is not a string'          | [key: [a: '1', b: 2]]            || [:]
+    'a key is not a string'            | [key: ['1': 'a', 2: 'b']]        || [:]
+  }
+
   def 'permutations'() {
     given:
     List<Integer> list1 = [1, 2, 3]

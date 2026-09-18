@@ -13,6 +13,7 @@ import au.com.dius.pact.core.pactbroker.IPactBrokerClient
 import au.com.dius.pact.core.pactbroker.PactBrokerClient
 import au.com.dius.pact.core.pactbroker.PactBrokerClientConfig
 import au.com.dius.pact.core.pactbroker.RequestFailedException
+import au.com.dius.pact.core.support.PactReaderOptionKeys
 import au.com.dius.pact.core.support.Result
 import au.com.dius.pact.core.support.Utils.permutations
 import au.com.dius.pact.core.support.expressions.DataType
@@ -366,7 +367,7 @@ open class PactBrokerLoader(
       if (username.isNotEmpty()) {
         logger.debug { "Authentication: Basic" }
         options = mapOf(
-          "authentication" to listOf(
+          PactReaderOptionKeys.AUTHENTICATION to listOf(
             "basic", username,
             ep.parseExpression(authentication!!.password, DataType.RAW, resolver)
           )
@@ -374,12 +375,18 @@ open class PactBrokerLoader(
       // Check if token is set. If yes, use bearer auth.
       } else if (token.isNotEmpty()) {
         logger.debug { "Authentication: Bearer" }
-        options = mapOf("authentication" to listOf("bearer", token, headerName))
+        options = mapOf(PactReaderOptionKeys.AUTHENTICATION to listOf("bearer", token, headerName))
       }
     }
 
     if (insecureTls) {
-      options = options + ("insecureTLS" to insecureTls)
+      options = options + (PactReaderOptionKeys.INSECURE_TLS to insecureTls)
+    }
+
+    // The options map is what gets passed to PactReader.loadPact for each pact, and is the only way the custom
+    // headers reach the request that fetches the pact contents from the broker
+    if (resolvedCustomHeaders.isNotEmpty()) {
+      options = options + (PactReaderOptionKeys.CUSTOM_HEADERS to resolvedCustomHeaders)
     }
 
     return PactBrokerClient(url.toString(), options.toMutableMap(), config)

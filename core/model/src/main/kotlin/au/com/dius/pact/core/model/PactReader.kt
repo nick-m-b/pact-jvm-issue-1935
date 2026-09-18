@@ -2,14 +2,12 @@ package au.com.dius.pact.core.model
 
 import au.com.dius.pact.core.model.messaging.MessagePact
 import au.com.dius.pact.core.pactbroker.PactBrokerClient
-import au.com.dius.pact.core.pactbroker.PactBrokerClientConfig
 import au.com.dius.pact.core.pactbroker.PactBrokerResult
 import au.com.dius.pact.core.support.HttpClient
 import au.com.dius.pact.core.support.HttpClientUtils
 import au.com.dius.pact.core.support.HttpClientUtils.isJsonResponse
 import au.com.dius.pact.core.support.Json
 import au.com.dius.pact.core.support.Result
-import au.com.dius.pact.core.support.Utils
 import au.com.dius.pact.core.support.Version
 import au.com.dius.pact.core.support.handleWith
 import au.com.dius.pact.core.support.json.JsonException
@@ -44,9 +42,7 @@ fun loadPactFromUrl(
 ): Pair<JsonValue.Object, PactSource> {
   return when (source) {
     is BrokerUrlSource -> {
-      val insecureTLS = Utils.lookupInMap(options, "insecureTLS", Boolean::class.java, false)
-      val brokerClient = PactBrokerClient(source.pactBrokerUrl, options.toMutableMap(),
-        PactBrokerClientConfig(insecureTLS = insecureTLS))
+      val brokerClient = PactBrokerClient.fromOptions(source.pactBrokerUrl, options)
       val pactResponse = brokerClient.fetchPact(source.url, source.encodePath)
       pactResponse.pactFile to source.copy(attributes = pactResponse.links, options = options, tag = source.tag)
     }
@@ -347,29 +343,19 @@ object DefaultPactReader : PactReader {
     } else if (source is InputStream || source is Reader || source is File) {
       return loadPactFromFile(source)
     } else if (source is BrokerUrlSource) {
-      val insecureTLS = Utils.lookupInMap(options, "insecureTLS", Boolean::class.java, false)
-      return HttpClient.newHttpClient(
-        options["authentication"],
-        URI(source.pactBrokerUrl),
-        insecureTLS = insecureTLS
-      ).first.use {
+      return HttpClient.newHttpClientFromOptions(URI(source.pactBrokerUrl), options).first.use {
         loadPactFromUrl(source, options, it)
       }
     } else if (source is PactBrokerResult) {
-      val insecureTLS = Utils.lookupInMap(options, "insecureTLS", Boolean::class.java, false)
-      return HttpClient.newHttpClient(
-        options["authentication"],
-        URI(source.pactBrokerUrl),
-        insecureTLS = insecureTLS
-      ).first.use {
+      return HttpClient.newHttpClientFromOptions(URI(source.pactBrokerUrl), options).first.use {
         loadPactFromUrl(BrokerUrlSource.fromResult(source, options, source.tag), options, it)
       }
     } else if (source is URL || source is UrlPactSource) {
       val urlSource = if (source is URL) UrlSource(source.toString()) else source as UrlPactSource
-      return loadPactFromUrl(urlSource, options, HttpClient.newHttpClient(options["authentication"], URI(urlSource.url)).first)
+      return loadPactFromUrl(urlSource, options, HttpClient.newHttpClientFromOptions(URI(urlSource.url), options).first)
     } else if (source is String && source.lowercase(Locale.getDefault()).matches(Regex("(https?|file)://?.*"))) {
       val urlSource = UrlSource(source)
-      return loadPactFromUrl(urlSource, options, HttpClient.newHttpClient(options["authentication"], URI(urlSource.url)).first)
+      return loadPactFromUrl(urlSource, options, HttpClient.newHttpClientFromOptions(URI(urlSource.url), options).first)
     } else if (source is String && source.lowercase(Locale.getDefault()).matches(Regex("s3://.*"))) {
       return loadPactFromS3Bucket(source)
     } else if (source is String && source.startsWith(CLASSPATH_URI_START)) {

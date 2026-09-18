@@ -97,6 +97,21 @@ private class RetryAnyMethod(
 object HttpClient {
 
   /**
+   * Creates a new HTTP client from the untyped options map that is passed to `PactReader.loadPact`.
+   *
+   * Anywhere a client is built from those options needs to go through here, otherwise the transport settings
+   * (authentication, insecure TLS and any custom headers) are silently dropped from the resulting requests.
+   */
+  fun newHttpClientFromOptions(uri: URI, options: Map<String, Any?>): Pair<CloseableHttpClient, CredentialsProvider?> {
+    return newHttpClient(
+      options[PactReaderOptionKeys.AUTHENTICATION],
+      uri,
+      insecureTLS = Utils.lookupInMap(options, PactReaderOptionKeys.INSECURE_TLS, Boolean::class.java, false),
+      customHeaders = Utils.lookupStringMapInMap(options, PactReaderOptionKeys.CUSTOM_HEADERS)
+    )
+  }
+
+  /**
    * Creates a new HTTP client
    */
   @JvmOverloads
